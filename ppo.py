@@ -9,6 +9,9 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0, orthogonal=True):
     if orthogonal:
         nn.init.orthogonal_(layer.weight, std)
         nn.init.constant_(layer.bias, bias_const)
+    else:
+        nn.init.kaiming_uniform_(layer.weight, nonlinearity='relu')
+        nn.init.constant_(layer.bias, bias_const)
     return layer
 
 
@@ -106,7 +109,7 @@ def compute_gae(rewards, values, dones, next_value, gamma=0.99, gae_lambda=0.95)
             next_non_terminal = 1.0 - dones[t]
             next_val = next_value
         else:
-            next_non_terminal = 1.0 - dones[t]
+            next_non_terminal = 1.0 - dones[t + 1]
             next_val = values[t + 1]
         delta = rewards[t] + gamma * next_val * next_non_terminal - values[t]
         advantages[t] = last_gae = delta + gamma * gae_lambda * next_non_terminal * last_gae
