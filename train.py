@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 import gymnasium as gym
 from gymnasium.vector import SyncVectorEnv
+from tqdm import tqdm
 from utils.env_wrappers import make_env
 from utils.logger import Logger
 from ppo import AgentCNN, RewardNormalizer, compute_gae
@@ -110,8 +111,12 @@ def train():
 
     global_step = 0
     start_time = time.time()
+    recent_returns = []
 
-    for update in range(1, num_updates + 1):
+    pbar = tqdm(range(1, num_updates + 1), desc="Training", unit="update",
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]{postfix}")
+
+    for update in pbar:
         if config.get("lr_decay", True):
             frac = 1.0 - (update - 1.0) / num_updates
             optimizer.param_groups[0]["lr"] = frac * config["learning_rate"]
@@ -139,6 +144,9 @@ def train():
                     if info is not None and "episode" in info:
                         ep_ret = info["episode"]["r"]
                         ep_len = info["episode"]["l"]
+                        recent_returns.append(ep_ret)
+                        if len(recent_returns) > 20:
+                            recent_returns.pop(0)
                         logger.log({
                             "charts/episodic_return": ep_ret,
                             "charts/episodic_length": ep_len,
@@ -220,8 +228,12 @@ def train():
             "charts/SPS": sps,
         }, step=global_step)
 
-        if update % 50 == 0:
-            print(f"Update {update}/{num_updates} | steps={global_step:,} | SPS={sps}")
+        mean_ret = np.mean(recent_returns) if recent_returns else 0.0
+        pbar.set_postfix({
+            "steps": f"{global_step/1e6:.2f}M",
+            "SPS": sps,
+            "return": f"{mean_ret:.1f}",
+        })
 
     envs.close()
     logger.close()
