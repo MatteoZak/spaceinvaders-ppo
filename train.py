@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument("--no-frame-stack", action="store_true", help="Ablation A2")
     parser.add_argument("--no-orthogonal-init", action="store_true", help="Ablation A3")
     parser.add_argument("--no-lr-decay", action="store_true", help="Ablation A4")
+    parser.add_argument("--no-track", action="store_true", help="Disabilita W&B, usa solo TensorBoard")
     return parser.parse_args()
 
 
@@ -58,6 +59,8 @@ def train():
         config["orthogonal_init"] = False
     if args.no_lr_decay:
         config["lr_decay"] = False
+    if args.no_track:
+        config["track"] = False
 
     run_name = args.run_name or make_run_name(config, args)
     logger = Logger(config, run_name)
