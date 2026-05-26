@@ -85,11 +85,15 @@ class RewardNormalizer:
         self.returns = None
 
     def normalize(self, rewards, dones):
+        # rewards, dones: shape (num_steps, num_envs)
+        # self.returns tracks discounted return per env: shape (num_envs,)
+        num_steps = rewards.shape[0]
         if self.returns is None:
-            self.returns = np.zeros(rewards.shape[0])
-        self.returns = self.returns * self.gamma + rewards
-        self.rms.update(self.returns)
-        self.returns[dones.astype(bool)] = 0.0
+            self.returns = np.zeros(rewards.shape[1], dtype=np.float64)
+        for t in range(num_steps):
+            self.returns = self.returns * self.gamma + rewards[t]
+            self.rms.update(self.returns[np.newaxis])  # batch of 1
+            self.returns[dones[t].astype(bool)] = 0.0
         return rewards / np.sqrt(self.rms.var + 1e-8)
 
 
